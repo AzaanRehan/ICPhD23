@@ -61,6 +61,9 @@ meth_1114 <- merge(meth_1114, DunedinPACE,    by = "SID", all.x = TRUE, sort = F
 meth_1114 <- merge(meth_1114, bernabeu,       by = "SID", all.x = TRUE, sort = FALSE)
 
 # Only strip a leading 'X' from calculator_res$SID if you've confirmed it's spurious; otherwise skip.
+calculator_res <- read.csv("DNAmAgeCalcProject_21747_Results.csv")
+head(calculator_res)
+calculator_res$SID <- substr(calculator_res$SID, 2, 20)
 meth_1114 <- merge(meth_1114, calculator_res, by = "SID", all.x = TRUE, sort = FALSE)
 
 # Restore original sample order and drop helper column
@@ -221,4 +224,30 @@ update_merge$fruit_portions_per_week <- update_merge$f_277 * update_merge$f_278
 update_merge$total_fruit_veg_portions_per_week <- update_merge$veg_portions_per_week + update_merge$fruit_portions_per_week
 update_merge$avg_daily_portions <- update_merge$total_fruit_veg_portions_per_week / 7
 
-write.table(meth_1114, file = "new_meth_1114.txt", sep = "\t", quote = FALSE, row.names = FALSE)
+write.table(update_merge, file = "new_meth_1114.txt", sep = "\t", quote = FALSE, row.names = FALSE)
+
+
+# 1. Sum relevant f_variables to get total weekly units
+update_merge$units_week <- rowSums(
+  update_merge[, c("f_459", "f_460", "f_461", "f_462", "f_463", "f_464")],
+  na.rm = TRUE
+)
+
+# 2. Create sex-specific drinker categories
+update_merge$drinker_category <- with(update_merge, ifelse(
+  units_week == 0, "None",
+  ifelse(
+    (gender == "F" & units_week <= 14) | (gender == "M" & units_week <= 21),
+    "Moderate",
+    "Heavy"
+  )
+))
+
+# 3. Check counts by category and gender
+table(update_merge$drinker_category, update_merge$gender, useNA = "ifany")
+
+# 4. Optional: total counts across all genders
+table(update_merge$drinker_category, useNA = "ifany")
+
+
+
